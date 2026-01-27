@@ -83,7 +83,8 @@ See [manual install](installation.md#manual).
 
 You can download a compiled executable from the [latest release](https://github.com/TomWright/dasel/releases/latest).
 
-> **Note:** Don't forget to put the binary somewhere in your `PATH`.
+> [!NOTE]
+> Don't forget to put the binary somewhere in your `PATH`.
 
 **Linux (64 bit):**
 
@@ -122,7 +123,8 @@ scoop install dasel
 
 You can `go install` the `cmd/dasel` package to build and install dasel for you.
 
-> **Note:** You may need to prefix the command with `GO111MODULE=on` in order for this to work.
+> [!NOTE]
+> You may need to prefix the command with `GO111MODULE=on` in order for this to work.
 
 ```
 go install github.com/tomwright/dasel/v2/cmd/dasel@master

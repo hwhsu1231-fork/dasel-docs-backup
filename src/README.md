@@ -1,6 +1,7 @@
 # Introduction
 
-> **Warning:** You are viewing dasel v2 documentation.
+> [!WARNING]
+> You are viewing dasel v2 documentation.
 
 ## Introduction
 

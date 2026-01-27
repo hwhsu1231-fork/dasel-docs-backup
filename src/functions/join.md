@@ -16,7 +16,8 @@ If additional arguments are given, join uses those values as selectors and joins
 
 If you wish to join data with plain strings you may use the [`string`](string.md) function.
 
-> **Note:** Be aware that the separator must always be a plain string and cannot contain any selector functions.
+> [!NOTE]
+> Be aware that the separator must always be a plain string and cannot contain any selector functions.
 
 ## Examples
 
