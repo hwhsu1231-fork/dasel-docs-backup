@@ -20,7 +20,7 @@ To build the documentation:
 mdbook build
 ```
 
-The generated HTML files will be in the `book/` directory.
+The generated HTML files will be in the `book/v2` directory.
 
 ## Viewing the Documentation
 
