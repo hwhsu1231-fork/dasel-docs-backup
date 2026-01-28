@@ -1,23 +1,11 @@
-name: Deploy to GitHub Pages
+name: deploy
 
 on:
   push:
     branches:
-      - "v3-deploy"
-      - "v3"
-      - "v2-deploy"
-      - "v2"
-      - "v1-deploy"
       - "v1"
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to build'
-        required: true
-        type: choice
-        options:
-          - v3
-        default: v3
+      - "v2"
+      - "v3"
 
 permissions:
   contents: write
@@ -29,13 +17,8 @@ jobs:
       - name: Determine target branch
         id: branch
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            BRANCH="${{ inputs.version }}"
-            echo "Checking out branch: $BRANCH (from manual input)"
-          else
-            BRANCH="${{ github.ref_name }}"
-            echo "Checking out branch: $BRANCH (from push event)"
-          fi
+          BRANCH="${{ github.ref_name }}"
+          echo "Checking out branch: $BRANCH"
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
       - uses: actions/checkout@v4
@@ -50,22 +33,18 @@ jobs:
       - name: Determine version from branch or input
         id: version
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ inputs.version }}"
-            echo "Using manual input version: $VERSION"
+          BRANCH_NAME="${{ github.ref_name }}"
+          if   [[ "$BRANCH_NAME" == "v1" ]]; then
+            VERSION="v1"
+          elif [[ "$BRANCH_NAME" == "v2" ]]; then
+            VERSION="v2"
+          elif [[ "$BRANCH_NAME" == "v3" ]]; then
+            VERSION="v3"
           else
-            BRANCH_NAME="${{ github.ref_name }}"
-            if   [[ "$BRANCH_NAME" == "v1" || "$BRANCH_NAME" == "v1-deploy" ]]; then
-              VERSION="v1"
-            elif [[ "$BRANCH_NAME" == "v2" || "$BRANCH_NAME" == "v2-deploy" ]]; then
-              VERSION="v2"
-            elif [[ "$BRANCH_NAME" == "v3" || "$BRANCH_NAME" == "v3-deploy" ]]; then
-              VERSION="v3"
-            else
-              VERSION="v3"
-            fi
-            echo "Using branch-based version: $VERSION"
+            echo "❌ Error: Invalid branch name: $BRANCH_NAME"
+            exit 1
           fi
+          echo "Using version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Build documentation
@@ -76,22 +55,23 @@ jobs:
 
       - name: Create index redirect
         run: |
+          LATEST_VERSION="v3"
           mkdir -p book
-          cat > book/index.html << 'INNEREOF'
+          cat > book/index.html << INNEREOF
           <!DOCTYPE html>
           <html>
           <head>
             <meta charset="utf-8">
-            <meta http-equiv="refresh" content="0; url=v3/">
-            <title>Redirecting to v3...</title>
+            <meta http-equiv="refresh" content="0; url=${LATEST_VERSION}/">
+            <title>Redirecting to ${LATEST_VERSION}...</title>
           </head>
           <body>
-            <p>Redirecting to <a href="v3/">v3</a>...</p>
+            <p>Redirecting to <a href="${LATEST_VERSION}/">${LATEST_VERSION}</a>...</p>
           </body>
           </html>
           INNEREOF
 
-      - name: Deploy to pages
+      - name: Deploy to Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
