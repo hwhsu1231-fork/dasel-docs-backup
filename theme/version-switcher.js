@@ -28,8 +28,8 @@
         return defaultVersion;
     }
 
-    // Get version base URL
-    function getVersionUrl(version) {
+    // Get version base URL (without trailing file)
+    function getVersionBaseUrl(version) {
         var protocol = window.location.protocol;
         var host = window.location.host;
         var pathname = window.location.pathname;
@@ -37,11 +37,17 @@
         var isLocal = host.includes('localhost') || host.includes('127.0.0.1') || protocol === 'file:';
 
         if (isLocal) {
-            // Replace any version in path with target version
-            var newPath = pathname;
+            // For local files, find the base directory up to and including the version folder
             var currentVer = getCurrentVersion();
-            newPath = pathname.replace('/' + currentVer + '/', '/' + version + '/');
-            return protocol + '//' + host + newPath.substring(0, newPath.lastIndexOf('/') + 1);
+            var versionPrefix = '/' + currentVer + '/';
+            var versionIndex = pathname.indexOf(versionPrefix);
+            
+            if (versionIndex !== -1) {
+                var basePath = pathname.substring(0, versionIndex);
+                return protocol + '//' + host + basePath + '/' + version + '/';
+            }
+            // Fallback if version not found in path
+            return protocol + '//' + host + '/' + version + '/';
         } else {
             // Production: dynamically detect base path
             // Extract base path (e.g., /dasel-docs/ for GitHub Pages)
@@ -50,7 +56,7 @@
 
             // Find the repo name (first non-version path segment)
             for (var i = 0; i < pathParts.length; i++) {
-                if (pathParts[i] !== 'v1' && pathParts[i] !== 'v2') {
+                if (pathParts[i] !== 'v1' && pathParts[i] !== 'v2' && pathParts[i] !== 'v3') {
                     basePath = '/' + pathParts[i];
                     break;
                 }
@@ -104,27 +110,48 @@
             (function(version) {
                 item.addEventListener('click', function() {
                     var currentPath = window.location.pathname;
-                    var pathParts = currentPath.split('/');
-                    var pagePath = pathParts[pathParts.length - 1] || 'index.html';
+                    var currentVersion = getCurrentVersion();
 
-                    var newUrl = getVersionUrl(version);
-                    var targetUrl = newUrl + pagePath;
+                    // Extract the relative path after the version directory
+                    var versionPrefix = '/' + currentVersion + '/';
+                    var versionIndex = currentPath.indexOf(versionPrefix);
+                    var relativePath = 'index.html';
 
-                    // Check if target page exists before navigating
-                    fetch(targetUrl, { method: 'HEAD' })
-                        .then(function(response) {
-                            if (response.ok) {
-                                // Page exists, navigate to it
-                                window.location.href = targetUrl;
-                            } else {
-                                // Page doesn't exist, fallback to index.html
-                                window.location.href = newUrl + 'index.html';
-                            }
-                        })
-                        .catch(function() {
-                            // Network error or other issue, fallback to index.html
-                            window.location.href = newUrl + 'index.html';
-                        });
+                    if (versionIndex !== -1) {
+                        relativePath = currentPath.substring(versionIndex + versionPrefix.length);
+                        if (!relativePath) {
+                            relativePath = 'index.html';
+                        }
+                    }
+
+                    var baseUrl = getVersionBaseUrl(version);
+                    var targetUrl = baseUrl + relativePath;
+
+                    // For file:// protocol or localhost, navigate directly without checking
+                    // (fetch doesn't work with file:// due to CORS)
+                    var protocol = window.location.protocol;
+                    var host = window.location.host;
+                    var isLocal = protocol === 'file:' || host.includes('localhost') || host.includes('127.0.0.1');
+
+                    if (isLocal) {
+                        window.location.href = targetUrl;
+                    } else {
+                        // For http/https, check if target page exists before navigating
+                        fetch(targetUrl, { method: 'HEAD' })
+                            .then(function(response) {
+                                if (response.ok) {
+                                    // Page exists, navigate to it
+                                    window.location.href = targetUrl;
+                                } else {
+                                    // Page doesn't exist, fallback to index.html
+                                    window.location.href = baseUrl + 'index.html';
+                                }
+                            })
+                            .catch(function() {
+                                // Network error or other issue, fallback to index.html
+                                window.location.href = baseUrl + 'index.html';
+                            });
+                    }
                 });
             })(ver);
 
