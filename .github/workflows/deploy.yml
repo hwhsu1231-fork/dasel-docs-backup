@@ -1,0 +1,101 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - "v3-deploy"
+      - "v3"
+      - "v2-deploy"
+      - "v2"
+      - "v1-deploy"
+      - "v1"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build'
+        required: true
+        type: choice
+        options:
+          - v3
+        default: v3
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine target branch
+        id: branch
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            BRANCH="${{ inputs.version }}"
+            echo "Checking out branch: $BRANCH (from manual input)"
+          else
+            BRANCH="${{ github.ref_name }}"
+            echo "Checking out branch: $BRANCH (from push event)"
+          fi
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.branch.outputs.branch }}
+
+      - name: Setup mdBook
+        uses: peaceiris/actions-mdbook@v2
+        with:
+          mdbook-version: 'latest'
+
+      - name: Determine version from branch or input
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ inputs.version }}"
+            echo "Using manual input version: $VERSION"
+          else
+            BRANCH_NAME="${{ github.ref_name }}"
+            if   [[ "$BRANCH_NAME" == "v1" || "$BRANCH_NAME" == "v1-deploy" ]]; then
+              VERSION="v1"
+            elif [[ "$BRANCH_NAME" == "v2" || "$BRANCH_NAME" == "v2-deploy" ]]; then
+              VERSION="v2"
+            elif [[ "$BRANCH_NAME" == "v3" || "$BRANCH_NAME" == "v3-deploy" ]]; then
+              VERSION="v3"
+            else
+              VERSION="v3"
+            fi
+            echo "Using branch-based version: $VERSION"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build documentation
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "Building $VERSION..."
+          mdbook build -d "book/$VERSION"
+
+      - name: Create index redirect
+        run: |
+          mkdir -p book
+          cat > book/index.html << 'INNEREOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta http-equiv="refresh" content="0; url=v3/">
+            <title>Redirecting to v3...</title>
+          </head>
+          <body>
+            <p>Redirecting to <a href="v3/">v3</a>...</p>
+          </body>
+          </html>
+          INNEREOF
+
+      - name: Deploy to pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./book
+          publish_branch: pages
+          keep_files: true
+          force_orphan: false
