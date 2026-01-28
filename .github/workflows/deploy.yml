@@ -14,42 +14,19 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Determine target branch
-        id: branch
-        run: |
-          BRANCH="${{ github.ref_name }}"
-          echo "Checking out branch: $BRANCH"
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-
-      - uses: actions/checkout@v4
+      - name: Checkout to '${{ github.ref_name }}' branch
+        uses: actions/checkout@v4
         with:
-          ref: ${{ steps.branch.outputs.branch }}
+          ref: ${{ github.ref_name }}
 
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v2
         with:
-          mdbook-version: 'latest'
-
-      - name: Determine version from branch or input
-        id: version
-        run: |
-          BRANCH_NAME="${{ github.ref_name }}"
-          if   [[ "$BRANCH_NAME" == "v1" ]]; then
-            VERSION="v1"
-          elif [[ "$BRANCH_NAME" == "v2" ]]; then
-            VERSION="v2"
-          elif [[ "$BRANCH_NAME" == "v3" ]]; then
-            VERSION="v3"
-          else
-            echo "❌ Error: Invalid branch name: $BRANCH_NAME"
-            exit 1
-          fi
-          echo "Using version: $VERSION"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          mdbook-version: '0.5.2'
 
       - name: Build documentation
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ github.ref_name }}"
           echo "Building $VERSION..."
           mdbook build -d "book/$VERSION"
 
@@ -71,7 +48,7 @@ jobs:
           </html>
           INNEREOF
 
-      - name: Deploy to Pages
+      - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -79,4 +56,3 @@ jobs:
           publish_branch: pages
           keep_files: true
           force_orphan: false
-
