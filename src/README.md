@@ -3,9 +3,7 @@
 > [!NOTE]
 > Dasel V3 was released in December 2025. Please raise any issues on [GitHub](https://github.com/TomWright/dasel).
 
-<div style="text-align: center;">
-<img src="images/daselgopher.png" alt="Dasel mascot" width="375">
-</div>
+<div style="text-align: center;"><img src="images/daselgopher.png" alt="Dasel mascot" width="375"></div>
 
 Dasel (short for **Data-Select**) is a command-line tool and library for querying, modifying, and transforming data structures such as JSON, YAML, TOML, XML, and CSV.
 
