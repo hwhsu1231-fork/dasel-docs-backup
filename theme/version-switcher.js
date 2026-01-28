@@ -108,9 +108,23 @@
                     var pagePath = pathParts[pathParts.length - 1] || 'index.html';
 
                     var newUrl = getVersionUrl(version);
-                    newUrl += pagePath;
+                    var targetUrl = newUrl + pagePath;
 
-                    window.location.href = newUrl;
+                    // Check if target page exists before navigating
+                    fetch(targetUrl, { method: 'HEAD' })
+                        .then(function(response) {
+                            if (response.ok) {
+                                // Page exists, navigate to it
+                                window.location.href = targetUrl;
+                            } else {
+                                // Page doesn't exist, fallback to index.html
+                                window.location.href = newUrl + 'index.html';
+                            }
+                        })
+                        .catch(function() {
+                            // Network error or other issue, fallback to index.html
+                            window.location.href = newUrl + 'index.html';
+                        });
                 });
             })(ver);
 
