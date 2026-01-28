@@ -14,6 +14,9 @@
         'v3': 'v3 (latest)',
     };
 
+    var _IS_LOCAL = window.location.protocol === 'file:';
+    var _SERVER_ROOT = window.location.origin;
+
     // Get current version from path or default
     function getCurrentVersion() {
         var path = window.location.pathname;
@@ -28,42 +31,53 @@
         return defaultVersion;
     }
 
-    // Get version base URL (without trailing file)
-    function getVersionBaseUrl(version) {
-        var protocol = window.location.protocol;
-        var host = window.location.host;
-        var pathname = window.location.pathname;
+    // Get target URL based on selected version
+    async function getTargetUrl(selectedVersion) {
+        var currentVersion = getCurrentVersion();
+        var currentPath = window.location.pathname;
 
-        var isLocal = host.includes('localhost') || host.includes('127.0.0.1') || protocol === 'file:';
+        // Replace current version with selected version in path
+        var targetPath = currentPath.replace('/' + currentVersion + '/', '/' + selectedVersion + '/');
 
-        if (isLocal) {
-            // For local files, find the base directory up to and including the version folder
-            var currentVer = getCurrentVersion();
-            var versionPrefix = '/' + currentVer + '/';
-            var versionIndex = pathname.indexOf(versionPrefix);
-            
-            if (versionIndex !== -1) {
-                var basePath = pathname.substring(0, versionIndex);
-                return protocol + '//' + host + basePath + '/' + version + '/';
-            }
-            // Fallback if version not found in path
-            return protocol + '//' + host + '/' + version + '/';
-        } else {
-            // Production: dynamically detect base path
-            // Extract base path (e.g., /dasel-docs/ for GitHub Pages)
-            var pathParts = pathname.split('/').filter(function(p) { return p; });
-            var basePath = '';
+        // Construct the full target URL
+        var targetUrl = _IS_LOCAL
+            ? 'file://' + targetPath
+            : _SERVER_ROOT + targetPath;
 
-            // Find the repo name (first non-version path segment)
-            for (var i = 0; i < pathParts.length; i++) {
-                if (pathParts[i] !== 'v1' && pathParts[i] !== 'v2' && pathParts[i] !== 'v3') {
-                    basePath = '/' + pathParts[i];
-                    break;
-                }
-            }
-
-            return protocol + '//' + host + basePath + '/' + version + '/';
+        // If running locally, return immediately
+        if (_IS_LOCAL) {
+            return targetUrl;
         }
+
+        // For remote URLs, check if target exists
+        try {
+            console.log('[Version Switcher] Checking:', targetUrl);
+            var response = await fetch(targetUrl, { method: 'HEAD' });
+
+            if (response.ok) {
+                console.log('[Version Switcher] Page exists, status:', response.status);
+                return targetUrl;
+            } else {
+                console.warn('[Version Switcher] Page not found, status:', response.status);
+            }
+        } catch (error) {
+            console.error('[Version Switcher] Error checking target URL:', error);
+        }
+
+        // Fallback to index.html
+        var fallbackPath = currentPath.replace(
+            '/' + currentVersion + '/',
+            '/' + selectedVersion + '/'
+        );
+        // Extract base path up to version directory
+        var versionIndex = fallbackPath.indexOf('/' + selectedVersion + '/');
+        if (versionIndex !== -1) {
+            fallbackPath = fallbackPath.substring(0, versionIndex + selectedVersion.length + 2) + 'index.html';
+        }
+
+        var fallbackUrl = _SERVER_ROOT + fallbackPath;
+        console.log('[Version Switcher] Using fallback:', fallbackUrl);
+        return fallbackUrl;
     }
 
     // Create version switcher UI
@@ -108,60 +122,9 @@
 
             // Add click handler
             (function(version) {
-                item.addEventListener('click', function() {
-                    var currentPath = window.location.pathname;
-                    var currentVersion = getCurrentVersion();
-
-                    // Extract the relative path after the version directory
-                    var versionPrefix = '/' + currentVersion + '/';
-                    var versionIndex = currentPath.indexOf(versionPrefix);
-                    var relativePath = 'index.html';
-
-                    if (versionIndex !== -1) {
-                        relativePath = currentPath.substring(versionIndex + versionPrefix.length);
-                        if (!relativePath) {
-                            relativePath = 'index.html';
-                        }
-                    }
-
-                    var baseUrl = getVersionBaseUrl(version);
-                    var targetUrl = baseUrl + relativePath;
-
-                    // For file:// protocol or localhost, navigate directly without checking
-                    // (fetch doesn't work with file:// due to CORS)
-                    var protocol = window.location.protocol;
-                    var host = window.location.host;
-                    var isLocal = protocol === 'file:' || host.includes('localhost') || host.includes('127.0.0.1');
-
-                    if (isLocal) {
-                        window.location.href = targetUrl;
-                    } else {
-                        // For http/https, check if target page exists before navigating
-                        // Use a simple image request trick to check if page exists
-                        console.log('[Version Switcher] Checking:', targetUrl);
-                        var xhr = new XMLHttpRequest();
-                        xhr.open('HEAD', targetUrl, true);
-                        xhr.onreadystatechange = function() {
-                            if (xhr.readyState === 4) {
-                                console.log('[Version Switcher] Status:', xhr.status);
-                                if (xhr.status === 200 || xhr.status === 304) {
-                                    // Page exists, navigate to it
-                                    console.log('[Version Switcher] Page exists, navigating to:', targetUrl);
-                                    window.location.href = targetUrl;
-                                } else {
-                                    // Page doesn't exist, fallback to index.html
-                                    console.log('[Version Switcher] Page not found, navigating to:', baseUrl + 'index.html');
-                                    window.location.href = baseUrl + 'index.html';
-                                }
-                            }
-                        };
-                        xhr.onerror = function() {
-                            // Network error, fallback to index.html
-                            console.log('[Version Switcher] Network error, navigating to:', baseUrl + 'index.html');
-                            window.location.href = baseUrl + 'index.html';
-                        };
-                        xhr.send();
-                    }
+                item.addEventListener('click', async function() {
+                    var targetUrl = await getTargetUrl(version);
+                    window.location.href = targetUrl;
                 });
             })(ver);
 
