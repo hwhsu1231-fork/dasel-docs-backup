@@ -14,21 +14,15 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Determine target branch
-        id: branch
-        run: |
-          BRANCH="${{ github.ref_name }}"
-          echo "Checking out branch: $BRANCH"
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-
-      - uses: actions/checkout@v4
+      - name: Checkout to '${{ github.ref_name }}' branch
+        uses: actions/checkout@v4
         with:
-          ref: ${{ steps.branch.outputs.branch }}
+          ref: ${{ github.ref_name }}
 
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v2
         with:
-          mdbook-version: 'latest'
+          mdbook-version: '0.5'
 
       - name: Determine version from branch or input
         id: version
