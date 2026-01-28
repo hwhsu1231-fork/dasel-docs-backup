@@ -137,20 +137,30 @@
                         window.location.href = targetUrl;
                     } else {
                         // For http/https, check if target page exists before navigating
-                        fetch(targetUrl, { method: 'HEAD' })
-                            .then(function(response) {
-                                if (response.ok) {
+                        // Use a simple image request trick to check if page exists
+                        console.log('[Version Switcher] Checking:', targetUrl);
+                        var xhr = new XMLHttpRequest();
+                        xhr.open('HEAD', targetUrl, true);
+                        xhr.onreadystatechange = function() {
+                            if (xhr.readyState === 4) {
+                                console.log('[Version Switcher] Status:', xhr.status);
+                                if (xhr.status === 200 || xhr.status === 304) {
                                     // Page exists, navigate to it
+                                    console.log('[Version Switcher] Page exists, navigating to:', targetUrl);
                                     window.location.href = targetUrl;
                                 } else {
                                     // Page doesn't exist, fallback to index.html
+                                    console.log('[Version Switcher] Page not found, navigating to:', baseUrl + 'index.html');
                                     window.location.href = baseUrl + 'index.html';
                                 }
-                            })
-                            .catch(function() {
-                                // Network error or other issue, fallback to index.html
-                                window.location.href = baseUrl + 'index.html';
-                            });
+                            }
+                        };
+                        xhr.onerror = function() {
+                            // Network error, fallback to index.html
+                            console.log('[Version Switcher] Network error, navigating to:', baseUrl + 'index.html');
+                            window.location.href = baseUrl + 'index.html';
+                        };
+                        xhr.send();
                     }
                 });
             })(ver);
